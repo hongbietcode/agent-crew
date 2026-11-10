@@ -1,6 +1,6 @@
 {
   "name": "agent-messaging",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Planner spawns and coordinates Claude, Codex, OpenCode and other coding agents in Herdr panes.",
   "author": {
     "name": "Local developer"

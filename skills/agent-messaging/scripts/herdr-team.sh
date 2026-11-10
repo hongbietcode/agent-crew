@@ -10,7 +10,7 @@ Usage: herdr-team.sh <command> <team> [args]
                                      Start a worker in the team workspace (2x2 grid per tab);
                                      default: claude --model sonnet --effort high
   ls    <team>                       List the team's workers with live status
-  send  <team> <name> <message>      Submit a task without waiting
+  send  <team> <name> <message>      Submit a task and confirm it starts (up to 15s)
   ask   <team> <name> <message> [ms] Submit a task, wait until it settles, print output
   wait  <team> [ms]                  Wait until every worker settles
   read  <team> <name> [lines]        Print a worker's recent output
@@ -80,6 +80,49 @@ header() {
     "$HERDR_PANE_ID" "$team" "$1"
 }
 
+# Inspect ambiguous delivery without sending input or masking the original error.
+delivery_diagnostics() {
+  echo "Task delivery to $1 is unconfirmed; inspect the pane before resending or pressing Enter." >&2
+  herdr agent get "$1" >&2 || true
+  herdr agent read "$1" --source recent-unwrapped --lines 80 >&2 || true
+}
+
+# Herdr submits text plus Enter. Its activity gate only identifies a new task
+# when submission starts from a ready, non-working state.
+submit_task() {
+  target=$1 message=$2 timeout=$3
+  shift 3
+  before=$(herdr agent get "$target") || {
+    code=$?
+    [ -z "$before" ] || printf '%s\n' "$before" >&2
+    delivery_diagnostics "$target"
+    return "$code"
+  }
+  if ! printf '%s\n' "$before" | jq -e \
+    '.result.agent | (.agent_status == "idle" or .agent_status == "done")
+     and (.interactive_ready != false)' >/dev/null; then
+    jq -nc --arg agent "$target" '{error: "agent_not_ready", agent: $agent}' >&2
+    delivery_diagnostics "$target"
+    return 1
+  fi
+  response=$(herdr agent prompt "$target" "$(header "$message")" --wait --timeout "$timeout" "$@") || {
+    code=$?
+    [ -z "$response" ] || printf '%s\n' "$response" >&2
+    delivery_diagnostics "$target"
+    return "$code"
+  }
+  if ! printf '%s\n' "$response" | jq -e --arg command "$command" \
+    '.result.agent.agent_status as $status
+     | if $command == "send" then $status == "working"
+       else $status == "idle" or $status == "done" end' >/dev/null; then
+    jq -nc --arg agent "$target" '{error: "task_delivery_unconfirmed", agent: $agent}' >&2
+    printf '%s\n' "$response" >&2
+    delivery_diagnostics "$target"
+    return 1
+  fi
+  printf '%s\n' "$response"
+}
+
 case $command in
 spawn)
   [ $# -ge 1 ] || usage
@@ -108,13 +151,13 @@ spawn)
 ls) workers ;;
 send)
   [ $# -eq 2 ] || usage
-  # Confirm the turn started so a following `wait` cannot match the previous idle/done state.
-  herdr agent prompt "$team-$1" "$(header "$2")" --wait --until working --until blocked \
-    --timeout 15000 | jq -c --arg agent "$team-$1" '{started: $agent, status: (.result.agent.agent_status // null)}'
+  output=$(submit_task "$team-$1" "$2" 15000 --until working --until blocked) || exit $?
+  printf '%s\n' "$output" | jq -c --arg agent "$team-$1" \
+    '{started: $agent, status: .result.agent.agent_status}'
   ;;
 ask)
-  [ $# -ge 2 ] || usage
-  herdr agent prompt "$team-$1" "$(header "$2")" --wait --timeout "${3:-1800000}" >/dev/null
+  [ $# -ge 2 ] && [ $# -le 3 ] || usage
+  submit_task "$team-$1" "$2" "${3:-1800000}" >/dev/null || exit $?
   herdr agent read "$team-$1" --source recent-unwrapped --lines 200
   ;;
 wait)

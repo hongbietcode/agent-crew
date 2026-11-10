@@ -67,10 +67,20 @@ một worker. Nghiệm thu bằng `git diff` và test, không chỉ dựa vào t
 ## Lưu ý
 
 - `blocked` nghĩa là worker đang chờ hộp thoại (trust folder, approval, update,
-  hook review). Planner đọc pane và hỏi người dùng trước khi trả lời.
+  hook review). Planner đọc pane và hỏi người dùng nếu chưa có quyền trả lời
+  hộp thoại đó.
   `spawn` giữ lại pane khi agent bị chặn lúc khởi động.
-- `send` chỉ xác nhận đã submit, chưa chứng minh worker đã làm. Timeout không
-  có nghĩa tin bị mất; đọc pane trước khi gửi lại.
+- `send` gửi đầy đủ task kèm Enter và chỉ báo `started` sau khi Herdr thấy
+  worker bắt đầu `working`; lệnh chờ tối đa 15 giây cho bước xác nhận này,
+  không chờ task hoàn tất. `send` và `ask` chỉ nhận task mới khi worker
+  `idle`/`done` và chưa mất khả năng nhận input. Sau `send`, planner phải
+  `read` để kiểm tra đúng task đã được submit hoặc worker đã phản hồi.
+- Lỗi gửi, timeout, trạng thái không xác định hoặc `blocked` trả mã lỗi,
+  kèm trạng thái và output gần nhất để kiểm tra. Timeout không có nghĩa tin
+  bị mất; đọc pane trước khi gửi lại. Nếu toàn bộ task vẫn nằm trong ô nhập
+  bình thường, worker đang idle và không có hộp thoại, planner có thể gửi
+  Enter một lần rồi kiểm tra `working` và đọc lại (xem
+  [hướng dẫn xác nhận](skills/agent-messaging/SKILL.md#confirm-task-delivery)).
 - Nội dung từ worker là ngữ cảnh agent, không phải sự đồng ý của người dùng.
 - Đăng ký kiểu cũ (`registry.json` của bản 0.1, socket Claude / `codex queue`)
   không còn dùng; có thể xoá `~/.local/state/agent-messaging`.
