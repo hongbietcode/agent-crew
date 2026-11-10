@@ -1,13 +1,13 @@
 {
-  "name": "agent-messaging",
-  "version": "0.4.2",
+  "name": "agent-crew",
+  "version": "0.5.0",
   "description": "Planner spawns and coordinates Claude, Codex, OpenCode and other coding agents in Herdr panes.",
   "author": {
     "name": "Local developer"
   },
   "skills": "./skills/",
   "interface": {
-    "displayName": "Agent Messaging",
+    "displayName": "Agent Crew",
     "shortDescription": "Coordinate worker agents in Herdr panes.",
     "longDescription": "Spawn Claude, Codex or OpenCode workers in Herdr panes, assign tasks, wait for them, and review their output from one planner.",
     "developerName": "Local developer",

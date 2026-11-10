@@ -1,11 +1,11 @@
 {
-  "name": "agent-messaging",
+  "name": "agent-crew",
   "interface": {
-    "displayName": "Agent Messaging"
+    "displayName": "Agent Crew"
   },
   "plugins": [
     {
-      "name": "agent-messaging",
+      "name": "agent-crew",
       "source": {
         "source": "local",
         "path": "./"

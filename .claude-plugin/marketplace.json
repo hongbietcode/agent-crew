@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "agent-messaging",
+  "name": "agent-crew",
   "description": "Herdr planner/worker orchestration plugin for coding agents.",
   "owner": {
     "name": "hongbietcode",
@@ -8,7 +8,7 @@
   },
   "plugins": [
     {
-      "name": "agent-messaging",
+      "name": "agent-crew",
       "description": "Planner spawns and coordinates Claude, Codex, OpenCode and other coding agents in Herdr panes.",
       "source": "./",
       "category": "productivity",

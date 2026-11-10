@@ -1,11 +1,11 @@
 ---
-name: agent-messaging
+name: agent-crew
 description: Use when this session acts as a planner that spawns, assigns tasks to, waits for, and reviews worker coding agents (Claude, Codex, OpenCode, …) running in Herdr panes.
 metadata:
-  version: "0.4.2"
+  version: "0.5.0"
 ---
 
-# Agent messaging (Herdr planner)
+# Agent crew (Herdr planner)
 
 The current session is the **planner**. Workers are coding agents in sibling
 Herdr panes. Herdr is the only state: each worker is a Herdr agent named

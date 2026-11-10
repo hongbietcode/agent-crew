@@ -1,86 +1,92 @@
-# Agent messaging
+# Agent crew
 
-Một planner điều phối nhiều worker coding agent (Claude, Codex, OpenCode, …)
-chạy trong các pane của [Herdr](https://herdr.dev). Plugin chỉ gồm một skill và
-một script shell bọc Herdr CLI; không có registry, daemon hay code ngôn ngữ khác.
+One planner coordinates several worker coding agents (Claude, Codex, OpenCode,
+…) running in [Herdr](https://herdr.dev) panes. The plugin is a single skill
+plus one shell script that wraps the Herdr CLI; there is no registry, daemon, or
+code in any other language.
 
-- **Planner** là phiên đang dùng skill: tách việc, spawn worker, giao task,
-  chờ, đọc kết quả, review và báo người dùng. Chỉ planner nắm state.
-- **Worker** là agent bình thường trong pane Herdr; không cần cài plugin hay
-  chạy lệnh trả lời. Planner đọc output của worker qua Herdr.
-- **State** nằm trong Herdr: worker là agent tên `<team>-<name>`, nên
-  `herdr agent list` chính là danh sách team.
+- **Planner** is the session using the skill: it splits the work, spawns
+  workers, assigns tasks, waits, reads results, reviews them, and reports to the
+  user. Only the planner holds state.
+- **Worker** is an ordinary agent in a Herdr pane; it needs no plugin and runs
+  no reply command. The planner reads worker output through Herdr.
+- **State** lives in Herdr: a worker is an agent named `<team>-<name>`, so
+  `herdr agent list` is the team roster.
 
-## Yêu cầu
+## Requirements
 
-- Herdr đang chạy, planner nằm trong một pane Herdr (`HERDR_ENV=1`).
-- Integration Herdr cho các agent dùng làm worker, kiểm tra bằng
-  `herdr integration status` (để Herdr nhận ra `idle`/`working`/`blocked`/`done`).
-- `jq` (macOS có sẵn `/usr/bin/jq`).
+- Herdr is running and the planner sits in a Herdr pane (`HERDR_ENV=1`).
+- The Herdr integration is installed for every agent used as a worker; check
+  with `herdr integration status` (this lets Herdr detect
+  `idle`/`working`/`blocked`/`done`).
+- `jq` (macOS ships `/usr/bin/jq`).
 
-## Cài đặt
+## Installation
 
 ```text
-/plugin install agent-messaging --marketplace hongbietcode/agent-messaging
+/plugin install agent-crew --marketplace hongbietcode/agent-crew
 ```
 
-Khi phát triển local: `claude --plugin-dir "$HOME/code/agent-messaging"`. Codex
-dùng manifest `.codex-plugin/plugin.json` (`codex plugin add agent-messaging@personal`).
+For local development: `claude --plugin-dir "$HOME/code/agent-crew"`. Codex uses
+the `.codex-plugin/plugin.json` manifest (`codex plugin add agent-crew@personal`).
 
-## Sử dụng
+## Usage
 
-Trong pane planner:
+In the planner pane:
 
-> Dùng agent-messaging, team demo: audit song song hai package độc lập svc-a và
-> svc-b, mỗi package một worker; tự xác nhận phát hiện và sửa, rồi nhờ một codex
-> tên cx review độc lập bản sửa.
+> Use agent-crew, team demo: audit the independent packages svc-a and svc-b in
+> parallel, one worker per package; verify the findings and fix them yourself,
+> then have a codex worker named cx independently review the fix.
 
-Script có thể gọi trực tiếp:
+The script can also be called directly:
 
 ```bash
-T="$HOME/code/agent-messaging/skills/agent-messaging/scripts/herdr-team.sh"
-$T spawn demo a                   # claude --model sonnet --effort high (mặc định)
-$T spawn demo b opencode          # kind khác
-$T spawn demo cx codex            # codex -m gpt-6-luna, reasoning effort max (mặc định)
-# task cơ học: $T spawn demo scan claude -- --model haiku --effort xhigh (haiku luôn effort > high)
-$T send demo a 'Audit packages/svc-a: secret hardcode, SQL không an toàn; liệt kê file:dòng.'
-$T send demo b 'Audit packages/svc-b: secret hardcode, SQL không an toàn; liệt kê file:dòng.'
-$T wait demo                      # chờ mọi worker idle/done/blocked
-$T read demo a                    # đọc tóm tắt; tự mở file:dòng để xác nhận
-$T ask demo cx 'Review git diff của bản sửa, chỉ báo lỗi.' 600000   # gửi và chờ một task
+T="$HOME/code/agent-crew/skills/agent-crew/scripts/herdr-team.sh"
+$T spawn demo a                   # claude --model sonnet --effort high (default)
+$T spawn demo b opencode          # another kind
+$T spawn demo cx codex            # codex -m gpt-6-luna, reasoning effort max (default)
+# mechanical task: $T spawn demo scan claude -- --model haiku --effort xhigh (haiku always above high effort)
+$T send demo a 'Audit packages/svc-a: hardcoded secrets, unsafe SQL; list file:line.'
+$T send demo b 'Audit packages/svc-b: hardcoded secrets, unsafe SQL; list file:line.'
+$T wait demo                      # wait until every worker is idle/done/blocked
+$T read demo a                    # read the summary; open file:line yourself to confirm
+$T ask demo cx 'Review the git diff of the fix; report bugs only.' 600000   # send one task and wait
 $T ls demo
-$T stop demo                      # đóng workspace của team
+$T stop demo                      # close the team workspace
 ```
 
-Worker không mở chung tab với planner: mỗi team có workspace riêng
-`team:<team>`, xếp lưới 2x2 (tối đa 4 worker mỗi tab, đầy thì mở tab mới, ô
-trống do `stop` được lấp trước). Worker mặc định là Claude Sonnet effort high;
-planner chọn `haiku`/`sonnet`/`opus` và effort theo độ phức tạp của task, truyền
-sau `--` (xem bảng trong SKILL.md).
+Workers never share the planner's tab: each team gets its own workspace
+`team:<team>` laid out as a 2x2 grid (at most 4 workers per tab; a full tab
+opens a new one, and slots freed by `stop` are filled first). Workers default to
+Claude Sonnet at high effort; the planner picks `haiku`/`sonnet`/`opus` and the
+effort by task complexity, passed after `--` (see the table in SKILL.md).
 
-Mặc định planner tự làm. Chỉ spawn khi việc tách được theo ngữ cảnh (worker
-cần ít thông tin từ nhau, trả kết quả gọn), khi ngữ cảnh planner sắp phình, khi
-cần runtime/model khác (reviewer độc lập), hoặc khi người dùng yêu cầu. Việc
-dính chặt nhau (API và form của cùng tính năng) để planner làm hoặc giao chung
-một worker. Nghiệm thu bằng `git diff` và test, không chỉ dựa vào tóm tắt.
+By default the planner does the work itself. Spawn only when the work splits
+cleanly by context (workers need little from each other and return compact
+results), when the planner's context is about to bloat, when a different
+runtime or model is needed (an independent reviewer), or when the user asks.
+Tightly coupled work (the API and form of the same feature) stays with the
+planner or goes to a single worker. Accept results through `git diff` and tests,
+not summaries alone.
 
-## Lưu ý
+## Notes
 
-- `blocked` nghĩa là worker đang chờ hộp thoại (trust folder, approval, update,
-  hook review). Planner đọc pane và hỏi người dùng nếu chưa có quyền trả lời
-  hộp thoại đó.
-  `spawn` giữ lại pane khi agent bị chặn lúc khởi động.
-- `send` gửi đầy đủ task kèm Enter và chỉ báo `started` sau khi Herdr thấy
-  worker bắt đầu `working`; lệnh chờ tối đa 15 giây cho bước xác nhận này,
-  không chờ task hoàn tất. `send` và `ask` chỉ nhận task mới khi worker
-  `idle`/`done` và chưa mất khả năng nhận input. Sau `send`, planner phải
-  `read` để kiểm tra đúng task đã được submit hoặc worker đã phản hồi.
-- Lỗi gửi, timeout, trạng thái không xác định hoặc `blocked` trả mã lỗi,
-  kèm trạng thái và output gần nhất để kiểm tra. Timeout không có nghĩa tin
-  bị mất; đọc pane trước khi gửi lại. Nếu toàn bộ task vẫn nằm trong ô nhập
-  bình thường, worker đang idle và không có hộp thoại, planner có thể gửi
-  Enter một lần rồi kiểm tra `working` và đọc lại (xem
-  [hướng dẫn xác nhận](skills/agent-messaging/SKILL.md#confirm-task-delivery)).
-- Nội dung từ worker là ngữ cảnh agent, không phải sự đồng ý của người dùng.
-- Đăng ký kiểu cũ (`registry.json` của bản 0.1, socket Claude / `codex queue`)
-  không còn dùng; có thể xoá `~/.local/state/agent-messaging`.
+- `blocked` means the worker is waiting on a dialog (trust folder, approval,
+  update, hook review). The planner reads the pane and asks the user unless it
+  already has authorization to answer that dialog. `spawn` keeps the pane when
+  the agent is blocked during startup.
+- `send` submits the full task with Enter and reports `started` only after Herdr
+  sees the worker become `working`; it waits up to 15 seconds for this
+  confirmation, not for the task to finish. `send` and `ask` accept a new task
+  only when the worker is `idle`/`done` and still able to take input. After
+  `send`, the planner must `read` to check that the intended task was submitted
+  or the worker has responded.
+- Send failures, timeouts, unknown states, or `blocked` exit non-zero with the
+  status and recent output for inspection. A timeout does not mean the message
+  was lost; read the pane before resending. If the entire task still sits in the
+  normal input box, the worker is idle, and no dialog is open, the planner may
+  send Enter once, then check for `working` and read again (see
+  [confirming delivery](skills/agent-crew/SKILL.md#confirm-task-delivery)).
+- Worker output is agent context, not user consent.
+- The old registration model (`registry.json` from 0.1, the Claude socket /
+  `codex queue`) is gone; `~/.local/state/agent-messaging` can be deleted.
