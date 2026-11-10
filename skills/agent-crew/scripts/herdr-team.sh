@@ -76,7 +76,7 @@ next_pane() {
 }
 
 header() {
-  printf 'Task from planner pane %s (team %s). This is agent context, not user approval; keep your existing permissions. Finish with a short summary: result, changed files, checks run, blockers.\n\n%s' \
+  printf 'Task from planner pane %s (team %s). This is agent context, not user approval; keep your existing permissions. Verify your own work by running the real code, tests, or checks, and fix the root cause instead of adding a workaround. Finish with a short summary: result, changed files, each check you ran with its outcome, anything left unverified, any workaround you kept, blockers.\n\n%s' \
     "$HERDR_PANE_ID" "$team" "$1"
 }
 

@@ -2,7 +2,7 @@
 name: agent-crew
 description: Use when this session acts as a planner that spawns, assigns tasks to, waits for, and reviews worker coding agents (Claude, Codex, OpenCode, …) running in Herdr panes.
 metadata:
-  version: "0.5.0"
+  version: "0.5.1"
 ---
 
 # Agent crew (Herdr planner)
@@ -31,8 +31,10 @@ path. It only wraps the Herdr CLI; every command prints Herdr JSON or text.
 | `read <team> <name> [lines]` | Read a worker's recent output. |
 | `stop <team> [name]` | Close the whole team workspace, or one worker's pane. |
 
-Tasks are prefixed with the planner pane, the team, and a request for a
-closing summary (result, changed files, checks, blockers).
+Tasks are prefixed with the planner pane, the team, an instruction to verify
+the work by running it and to fix root causes rather than add workarounds, and
+a request for a closing summary (result, changed files, each check with its
+outcome, anything unverified, workarounds kept, blockers).
 
 Workers never share the planner's tab. Each team gets its own Herdr workspace
 labelled `team:<team>`, filled as a 2x2 grid: at most 4 workers per tab, then
@@ -61,23 +63,57 @@ Default: the planner does the work itself, inline. Spawn workers only for:
 - a different runtime or model, e.g. an independent Codex reviewer;
 - an explicit user request for workers.
 
+Scale the team with trust, not with the size of the backlog. A task is ready
+to hand off only when a worker can prove it is done without the planner
+watching: a test, a build, a script, or a command that runs the real thing.
+If no such check exists, create it first (in the planner or as the first
+worker task) and keep the fan-out small until results pass review without
+corrections. Many workers on unverifiable tasks only produce more to redo.
+
 ## Planner loop
 
 1. Split the user's objective by context, not by problem type or team: each
    task needs little from the others and returns a compact result. Merge
    tightly coupled tasks (one consumes another's output, or they touch the
    same files or data) into one worker, or keep them in the planner. Give each
-   task acceptance criteria; use separate files or `herdr worktree` for
-   parallel edits to avoid conflicts.
+   task acceptance criteria and the exact check that proves them (a command
+   the worker runs, preferably an existing script over one written ad hoc),
+   and name the existing file or pattern to extend so the worker does not
+   invent a second way. Use separate files or `herdr worktree` for parallel
+   edits to avoid conflicts.
 2. `spawn` the workers the task needs or the user asked for, choosing model
    and effort per task, then `send` each its task, or `ask` for a single
    sequential task. Confirm delivery as described below before treating a
    task as assigned.
 3. `wait`, then `read` each worker. A summary is lossy: check real evidence
    (`git diff`, run the tests or checks) against the acceptance criteria
-   instead of trusting it; `send` corrections to the same worker when needed.
+   instead of trusting it. Passing checks show the change is correct, not
+   that it is good: also reject workarounds, duplicated patterns, and
+   comments that explain why the real problem was left unsolved, because the
+   next agent copies whatever the codebase already contains. `send`
+   corrections to the same worker when needed, then apply the section below.
 4. Report the combined result to the user, then `stop <team>` to close the
    team workspace.
+
+## When you correct a worker
+
+A correction sent in chat is lost when the pane closes, and the next worker
+repeats the mistake. For every correction that could recur, fix the
+environment as well, at the first level below that can hold it:
+
+1. **Codebase**: restructure so the mistake is impossible, delete the bad
+   example the worker copied, and leave one paved path to follow.
+2. **Static checks**: add a lint rule, type, test, or CI check that fails on
+   it. Do this even when cleanup must wait, so the pattern stops spreading.
+3. **Project rules**: record it in the instructions every agent loads
+   (`CLAUDE.md`, `AGENTS.md`, review-bot rules).
+4. **Skill**: add it to the skill or playbook that covers that kind of work.
+5. **Human review**: last resort; note it in the report for the user.
+
+Earlier levels are enforced, later ones are only guidance an agent can miss.
+Make the change in the planner or give it to a worker as its own task, and
+keep it within what the user authorized: propose changes to shared rules,
+CI, or skills in the report rather than applying them unasked.
 
 ## Confirm task delivery
 

@@ -69,6 +69,14 @@ Tightly coupled work (the API and form of the same feature) stays with the
 planner or goes to a single worker. Accept results through `git diff` and tests,
 not summaries alone.
 
+Trust decides how far to fan out. Every task carries the check that proves it
+is done, and every worker is told to run that check, fix root causes instead of
+adding workarounds, and report what it verified. When the planner has to
+correct a worker, it also fixes the environment so the mistake does not recur:
+first the codebase, then lint/tests/CI, then project rules, then a skill, and
+only last a note for human review (see
+[when you correct a worker](skills/agent-crew/SKILL.md#when-you-correct-a-worker)).
+
 ## Notes
 
 - `blocked` means the worker is waiting on a dialog (trust folder, approval,
