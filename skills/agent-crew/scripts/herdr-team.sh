@@ -8,7 +8,7 @@ usage() {
 Usage: herdr-team.sh <command> <team> [args]
   spawn <team> <name> [kind] [-- agent-args...]
                                      Start a worker in the team workspace (2x2 grid per tab);
-                                     default: claude --model sonnet --effort high
+                                     default: claude --model opus --effort medium
   ls    <team>                       List the team's workers with live status
   send  <team> <name> <message>      Submit a task and confirm it starts (up to 15s)
   ask   <team> <name> <message> [ms] Submit a task, wait until it settles, print output
@@ -130,11 +130,11 @@ spawn)
   shift
   case ${1:-} in '' | --) ;; *) kind=$1 && shift ;; esac
   [ "${1:-}" = -- ] && shift
-  # Default models unless agent args are given: Claude Sonnet high, Codex Luna max.
+  # Default models unless agent args are given: Claude Opus medium, Codex Sol 6.1 medium.
   if [ $# -eq 0 ]; then
     case $kind in
-    claude) set -- --model sonnet --effort high ;;
-    codex) set -- -m gpt-6-luna -c model_reasoning_effort=max ;;
+    claude) set -- --model opus --effort medium ;;
+    codex) set -- -m gpt-6.1-sol -c model_reasoning_effort=medium ;;
     esac
   fi
   [ $# -gt 0 ] && set -- -- "$@"

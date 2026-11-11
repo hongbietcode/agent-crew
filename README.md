@@ -42,9 +42,9 @@ The script can also be called directly:
 
 ```bash
 T="$HOME/code/agent-crew/skills/agent-crew/scripts/herdr-team.sh"
-$T spawn demo a                   # claude --model sonnet --effort high (default)
+$T spawn demo a                   # claude --model opus --effort medium (default)
 $T spawn demo b opencode          # another kind
-$T spawn demo cx codex            # codex -m gpt-6-luna, reasoning effort max (default)
+$T spawn demo cx codex            # codex -m gpt-6.1-sol, reasoning effort medium (default)
 # mechanical task: $T spawn demo scan claude -- --model haiku --effort xhigh (haiku always above high effort)
 $T send demo a 'Audit packages/svc-a: hardcoded secrets, unsafe SQL; list file:line.'
 $T send demo b 'Audit packages/svc-b: hardcoded secrets, unsafe SQL; list file:line.'
@@ -58,8 +58,8 @@ $T stop demo                      # close the team workspace
 Workers never share the planner's tab: each team gets its own workspace
 `team:<team>` laid out as a 2x2 grid (at most 4 workers per tab; a full tab
 opens a new one, and slots freed by `stop` are filled first). Workers default to
-Claude Sonnet at high effort; the planner picks `haiku`/`sonnet`/`opus` and the
-effort by task complexity, passed after `--` (see the table in SKILL.md).
+Claude Opus at medium effort; Codex workers default to GPT-6.1 Sol
+at medium. The planner picks the model and effort by task complexity, passed after `--` (see the tables in SKILL.md).
 
 By default the planner does the work itself. Spawn only when the work splits
 cleanly by context (workers need little from each other and return compact

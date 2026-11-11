@@ -23,7 +23,7 @@ path. It only wraps the Herdr CLI; every command prints Herdr JSON or text.
 
 | Command | Purpose |
 | --- | --- |
-| `spawn <team> <name> [kind] [-- args]` | Start `<team>-<name>` in the team workspace. Default kind `claude` with `--model sonnet --effort high`; `codex` defaults to `-m gpt-6-luna -c model_reasoning_effort=max`; other kinds: `opencode`, … (`herdr agent start --help`). Native args after `--` replace the default. |
+| `spawn <team> <name> [kind] [-- args]` | Start `<team>-<name>` in the team workspace. Default kind `claude` with `--model opus --effort medium`; `codex` defaults to `-m gpt-6.1-sol -c model_reasoning_effort=medium`; other kinds: `opencode`, … (`herdr agent start --help`). Native args after `--` replace the default. |
 | `ls <team>` | Roster with live status: `idle`, `working`, `blocked`, `done`, `unknown`. |
 | `send <team> <name> '<task>'` | Submit a task and confirm the worker starts, then return without waiting for completion (parallel work). |
 | `ask <team> <name> '<task>' [ms]` | Submit, wait until it settles, print recent output. |
@@ -48,8 +48,27 @@ after `--`:
 | Task | Args |
 | --- | --- |
 | Mechanical: list, search, read, rename, format, run a known command | `-- --model haiku --effort xhigh` (`max` for heavier mechanical work; never `high` or lower) |
-| Normal: implement a scoped change, write tests, fix a clear bug (default) | none (`sonnet`, `high`) |
-| Hard: cross-module design, unclear root cause, security, large refactor, final review | `-- --model opus --effort high` (`xhigh` when stakes are high) |
+| Normal: implement a scoped change, write tests, fix a clear bug (default) | none (`opus`, `medium`) |
+| Hard: cross-module design, unclear root cause, security, large refactor | `-- --model opus --effort high` |
+| Critical: final review, security sign-off, high-stakes design | `-- --model opus --effort xhigh` |
+
+Do not use Sonnet: on cost per task, Opus beats it at every effort level (Opus
+`medium` scores above Sonnet `high` for similar cost; Opus `xhigh` matches
+Sonnet `max` at less than half the cost). Avoid Opus `max` too; it costs about
+1.7x `xhigh` for a small gain.
+
+For a `codex` worker:
+
+| Task | Args |
+| --- | --- |
+| Mechanical, high-volume, checkable | `-- -m gpt-6.1-terra -c model_reasoning_effort=low` |
+| Normal (default) | none (`gpt-6.1-sol`, `medium`) |
+| Hard task or independent review | `-- -m gpt-6.1-sol -c model_reasoning_effort=xhigh` |
+| Highest score regardless of cost | `-- -m gpt-6-astra -c model_reasoning_effort=max` |
+
+Avoid `gpt-6-luna` above `low` (Terra `low` scores higher at similar or lower cost) and Sol
+`max` (it scores below Sol `medium` on coding at about 2x the cost). Astra below
+`max` is beaten by Sol at a fraction of the cost.
 
 Example: `spawn demo scan claude -- --model haiku --effort xhigh`. Use a
 different worker for a different tier rather than switching a running one.
