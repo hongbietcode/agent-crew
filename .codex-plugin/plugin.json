@@ -20,5 +20,6 @@
       "Send the worker its task and wait.",
       "Show the team's status."
     ]
-  }
+  },
+  "license": "MIT"
 }
